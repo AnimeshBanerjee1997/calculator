@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Apricot Calculator</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app">
+    <section class="calculator" aria-label="Calculator">
+      <header class="brand">
+        <span class="brand-dot"></span>
+        <span class="brand-name">Apricot</span>
+        <span class="digit-meter" id="digitMeter" title="Digits used">0/10</span>
+      </header>
+
+      <div class="display" id="display" role="status" aria-live="polite">
+        <div class="expression" id="expression">&nbsp;</div>
+        <div class="value" id="value">0</div>
+        <div class="notice" id="notice"></div>
+      </div>
+
+      <div class="keys" id="keys">
+        <button class="key key-util" data-action="clear">AC</button>
+        <button class="key key-util" data-action="sign">+/−</button>
+        <button class="key key-util" data-action="backspace" aria-label="Backspace">⌫</button>
+        <button class="key key-op" data-op="divide" aria-label="Divide">÷</button>
+
+        <button class="key" data-digit="7">7</button>
+        <button class="key" data-digit="8">8</button>
+        <button class="key" data-digit="9">9</button>
+        <button class="key key-op" data-op="multiply" aria-label="Multiply">×</button>
+
+        <button class="key" data-digit="4">4</button>
+        <button class="key" data-digit="5">5</button>
+        <button class="key" data-digit="6">6</button>
+        <button class="key key-op" data-op="subtract" aria-label="Subtract">−</button>
+
+        <button class="key" data-digit="1">1</button>
+        <button class="key" data-digit="2">2</button>
+        <button class="key" data-digit="3">3</button>
+        <button class="key key-op" data-op="add" aria-label="Add">+</button>
+
+        <button class="key key-wide" data-digit="0">0</button>
+        <button class="key" data-action="decimal" aria-label="Decimal point">.</button>
+        <button class="key key-equals" data-action="equals" aria-label="Equals">=</button>
+      </div>
+    </section>
+
+    <aside class="history" aria-label="History">
+      <div class="history-head">
+        <h2>History</h2>
+        <button class="history-clear" id="historyClear">Clear</button>
+      </div>
+      <ol class="history-list" id="historyList"></ol>
+      <p class="history-empty" id="historyEmpty">Your calculations will show up here. Tap one to reuse its result.</p>
+    </aside>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
