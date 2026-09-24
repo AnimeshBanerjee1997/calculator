@@ -1,0 +1,88 @@
+# Runs when code lands on qa (i.e. a dev → qa pull request was merged):
+#   1. runs the full regression suite on the exact qa commit
+#   2. if it passes, opens a qa → main release PR and merges it
+# Nothing reaches main unless the suite passed on the very commit being released.
+
+name: QA Regression & Promote
+
+on:
+  push:
+    branches: [qa]
+  workflow_dispatch:
+
+concurrency:
+  group: qa-promotion
+  cancel-in-progress: true # a newer qa push supersedes an older one
+
+permissions:
+  contents: read
+
+jobs:
+  policy:
+    # Same name as the gate checks, so the tested qa commit satisfies main's ruleset.
+    name: Source branch policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Commit is on qa
+        run: test "$GITHUB_REF" = "refs/heads/qa" && echo "OK, commit is on qa"
+
+  regression:
+    uses: ./.github/workflows/regression.yml
+
+  promote:
+    name: Promote qa → main
+    needs: [policy, regression]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      # PROMOTION_TOKEN (a fine-grained PAT) is optional but recommended; see docs/REGRESSION.md.
+      GH_TOKEN: ${{ secrets.PROMOTION_TOKEN || github.token }}
+      GH_REPO: ${{ github.repository }}
+      TESTED_SHA: ${{ github.sha }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Check qa has not moved and has something to release
+        id: check
+        run: |
+          current=$(gh api "repos/$GH_REPO/git/ref/heads/qa" --jq .object.sha)
+          if [ "$current" != "$TESTED_SHA" ]; then
+            echo "qa moved to $current while $TESTED_SHA was being tested; the newer run will promote it."
+            echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          ahead=$(gh api "repos/$GH_REPO/compare/main...qa" --jq .ahead_by)
+          if [ "$ahead" = "0" ]; then
+            echo "main already contains qa; nothing to release."
+            echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Open (or reuse) the release pull request
+        id: pr
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          pr=$(gh pr list --base main --head qa --state open --json number --jq '.[0].number // empty')
+          if [ -z "$pr" ]; then
+            gh pr create --base main --head qa \
+              --title "Release: qa → main (${TESTED_SHA::7})" \
+              --body "Automated release. The full regression suite passed on qa commit \`$TESTED_SHA\`.
+
+          Test run: $RUN_URL"
+            pr=$(gh pr list --base main --head qa --state open --json number --jq '.[0].number')
+          fi
+          echo "number=$pr" >> "$GITHUB_OUTPUT"
+
+      - name: Merge once main's required checks pass
+        if: steps.check.outputs.skip == 'false'
+        env:
+          PR: ${{ steps.pr.outputs.number }}
+        run: |
+          # --match-head-commit guarantees we merge exactly the commit that was tested.
+          if gh pr merge "$PR" --merge --auto --match-head-commit "$TESTED_SHA"; then
+            echo "Auto-merge enabled on #$PR; GitHub merges it as soon as the required checks pass."
+          else
+            echo "Auto-merge unavailable, merging directly."
+            gh pr merge "$PR" --merge --match-head-commit "$TESTED_SHA"
+          fi

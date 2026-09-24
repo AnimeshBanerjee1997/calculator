@@ -1,0 +1,37 @@
+# Gate for pull requests into main. No hotfixes: only qa can be merged into main,
+# and it must pass the full suite again.
+# Required checks on main: "Source branch policy", "regression / Regression verdict"
+
+name: Main Gate
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: main-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  policy:
+    name: Source branch policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Only qa may be merged into main (no hotfixes)
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          THIS_REPO: ${{ github.repository }}
+        run: |
+          if [ "$HEAD_REF" != "qa" ] || [ "$HEAD_REPO" != "$THIS_REPO" ]; then
+            echo "::error::Hotfixes are not allowed. Pull requests into main must come from qa (got '$HEAD_REPO:$HEAD_REF'). Fix on dev, then promote dev → qa → main."
+            exit 1
+          fi
+          echo "OK: qa → main"
+
+  regression:
+    needs: policy
+    uses: ./.github/workflows/regression.yml

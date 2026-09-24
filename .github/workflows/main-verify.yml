@@ -1,0 +1,18 @@
+# Post-release check: re-runs the suite on main after every release, so the
+# production branch always has a green (or loudly red) status.
+
+name: Main Post-release Verification
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1' # weekly, catches breakage from new Node/browser versions
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    uses: ./.github/workflows/regression.yml

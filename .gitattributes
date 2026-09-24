@@ -1,0 +1,2 @@
+# Store text with LF so Windows and Linux CI see identical files.
+* text=auto eol=lf

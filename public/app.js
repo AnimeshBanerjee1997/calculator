@@ -118,11 +118,17 @@
     if (state.error) resetAll();
   }
 
+  // Begin a new number. After "=" there is no pending op, so the old expression goes too.
+  function startFresh(value) {
+    state.current = value;
+    state.waiting = false;
+    if (!state.op) state.expression = '';
+  }
+
   function inputDigit(d) {
     clearErrorIfAny();
     if (state.waiting) {
-      state.current = d;
-      state.waiting = false;
+      startFresh(d);
     } else if (digitCount(state.current) >= MAX_DIGITS) {
       return shake('Max 10 digits per number');
     } else {
@@ -134,8 +140,7 @@
   function inputDecimal() {
     clearErrorIfAny();
     if (state.waiting) {
-      state.current = '0.';
-      state.waiting = false;
+      startFresh('0.');
     } else if (!state.current.includes('.')) {
       if (digitCount(state.current) >= MAX_DIGITS) return shake('Max 10 digits per number');
       state.current += '.';
@@ -153,9 +158,13 @@
 
   function toggleSign() {
     clearErrorIfAny();
+    if (state.waiting) {
+      // Right after an operator, ± starts a new negative number instead of flipping the old one.
+      startFresh('-0');
+      return render();
+    }
     if (state.current === '0' || state.current === '0.') return render();
     state.current = state.current.startsWith('-') ? state.current.slice(1) : '-' + state.current;
-    state.waiting = false;
     render();
   }
 
@@ -224,6 +233,7 @@
   }
 
   function handle(action) {
+    if (state.busy) return; // ignore input while a calculation is in flight
     switch (action.type) {
       case 'digit': return inputDigit(action.value);
       case 'op': return chooseOperator(action.value);

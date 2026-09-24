@@ -1,0 +1,19 @@
+# Early feedback: every push to dev runs the full regression suite.
+
+name: Dev CI
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+concurrency:
+  group: dev-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    uses: ./.github/workflows/regression.yml

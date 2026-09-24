@@ -3,3 +3,10 @@ npm-debug.log*
 .env
 .DS_Store
 Thumbs.db
+
+# test output
+test-results/
+playwright-report/
+blob-report/
+coverage/
+public-regression-probe/

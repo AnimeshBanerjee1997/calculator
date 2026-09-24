@@ -1,0 +1,84 @@
+# The full regression suite. Every gate calls this one file, so dev, qa and main
+# are always checked by exactly the same tests.
+#
+# Required status check produced for callers: "regression / Regression verdict"
+
+name: Regression Suite
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-regression:
+    name: Unit + regression (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+
+      - name: Unit, golden, property, contract and bug-registry tests (with coverage gate)
+        run: npm run test:coverage
+
+      - name: Property tests with a fresh random seed
+        if: matrix.node == 24
+        env:
+          REGRESSION_SEED: ${{ github.run_id }}
+        run: |
+          echo "Exploring with REGRESSION_SEED=$REGRESSION_SEED (re-run locally with the same seed to reproduce)"
+          node --test --test-timeout=20000 test/regression/properties.test.js
+
+  e2e:
+    name: End-to-end (Chromium desktop + mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Browser tests
+        env:
+          CI: 'true'
+        run: npm run test:e2e
+      - name: Upload report and traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_id }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
+  verdict:
+    name: Regression verdict
+    needs: [unit-regression, e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: All regression jobs must pass
+        env:
+          UNIT: ${{ needs.unit-regression.result }}
+          E2E: ${{ needs.e2e.result }}
+        run: |
+          echo "unit + regression: $UNIT"
+          echo "end-to-end:        $E2E"
+          if [ "$UNIT" != "success" ] || [ "$E2E" != "success" ]; then
+            echo "::error::Regression suite failed. This change cannot be promoted."
+            exit 1
+          fi

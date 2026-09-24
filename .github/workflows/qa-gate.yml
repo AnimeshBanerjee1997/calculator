@@ -1,0 +1,36 @@
+# Gate for pull requests into qa: they must come from dev and pass the full suite.
+# Required checks on qa: "Source branch policy", "regression / Regression verdict"
+
+name: QA Gate
+
+on:
+  pull_request:
+    branches: [qa]
+
+concurrency:
+  group: qa-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  policy:
+    name: Source branch policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Only dev may be merged into qa
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          THIS_REPO: ${{ github.repository }}
+        run: |
+          if [ "$HEAD_REF" != "dev" ] || [ "$HEAD_REPO" != "$THIS_REPO" ]; then
+            echo "::error::Pull requests into qa must come from the dev branch (got '$HEAD_REPO:$HEAD_REF')."
+            exit 1
+          fi
+          echo "OK: dev → qa"
+
+  regression:
+    needs: policy
+    uses: ./.github/workflows/regression.yml

@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 const http = require('http');
 const fs = require('fs');
@@ -69,9 +69,16 @@ async function handleCalculate(req, res) {
 }
 
 function serveStatic(req, res) {
-  const urlPath = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
+  let urlPath;
+  try {
+    urlPath = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
+  } catch {
+    res.writeHead(400, { 'Content-Type': 'text/plain' }).end('Bad request');
+    return;
+  }
   const filePath = path.normalize(path.join(PUBLIC_DIR, urlPath === '/' ? 'index.html' : urlPath));
-  if (!filePath.startsWith(PUBLIC_DIR)) {
+  // The trailing separator stops sibling folders like "public-private" from matching.
+  if (!filePath.startsWith(PUBLIC_DIR + path.sep)) {
     res.writeHead(403).end('Forbidden');
     return;
   }

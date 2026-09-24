@@ -5,10 +5,19 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test"
+    "test": "npm run test:unit && npm run test:regression",
+    "test:unit": "node --test --test-timeout=20000 \"test/unit/**/*.test.js\"",
+    "test:regression": "node --test --test-timeout=20000 \"test/regression/**/*.test.js\"",
+    "test:coverage": "node --test --test-timeout=20000 --experimental-test-coverage --test-coverage-include=lib/** --test-coverage-include=server.js --test-coverage-lines=95 --test-coverage-branches=85 --test-coverage-functions=95 \"test/unit/**/*.test.js\" \"test/regression/**/*.test.js\"",
+    "test:e2e": "playwright test",
+    "test:all": "npm run test:coverage && npm run test:e2e",
+    "baseline:update": "node scripts/update-baseline.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22.8"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
 }

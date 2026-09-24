@@ -1,4 +1,4 @@
-﻿# Apricot Calculator
+# Apricot Calculator
 
 A simple calculator for addition, subtraction, multiplication and division.
 The browser handles input and display, and a Node.js backend does the math. Results can have up to **10 digits**. A bigger result shows **Limit Over**.
@@ -6,11 +6,13 @@ The browser handles input and display, and a Node.js backend does the math. Resu
 ## Run
 
 ```
+npm install      # once, installs the test tooling
 npm start        # http://localhost:3456   (set PORT to change)
-npm test
+npm test         # unit + regression tests
+npm run test:all # everything CI runs, incl. browser tests (run `npx playwright install chromium` once first)
 ```
 
-You only need Node.js 18 or newer. There are no dependencies to install.
+You need Node.js 22.8 or newer. The app itself has no runtime dependencies.
 
 ## Rules
 
@@ -38,22 +40,22 @@ You only need Node.js 18 or newer. There are no dependencies to install.
 server.js          HTTP server: static files + /api/calculate
 lib/calc.js        exact decimal math and the 10-digit limit
 public/            frontend (index.html, styles.css, app.js)
-test/              node:test unit + API tests
+test/unit/         engine unit tests
+test/regression/   golden baseline, property, API contract and bug-registry tests
+test/e2e/          Playwright browser tests
+scripts/           baseline generator
+.github/workflows/ CI gates for dev → qa → main
 ```
 
-## Branches
+## Branches and releases
 
-Code moves in one direction: **dev → qa → main**.
+Code moves in one direction: **dev → qa → main**. There are no hotfixes.
 
 | Branch | Purpose |
 |--------|---------|
-| `dev`  | Day-to-day development. New features and fixes go here first. |
-| `qa`   | Testing. Merge `dev` into `qa` when it's ready to test, and run `npm test` plus manual checks here. |
-| `main` | Production-ready code. Merge only from `qa`, after QA passes. |
+| `dev`  | Day-to-day development. Every push runs the full regression suite. |
+| `qa`   | Testing. Changes arrive only through a PR from `dev`, which must pass the suite. Once merged, the suite runs again on qa and, if it passes, the code is released to `main` automatically. |
+| `main` | Production-ready code. Changes arrive only through the automated release PR from `qa`. |
 
-```
-git checkout qa   && git merge dev   # promote dev to QA
-git checkout main && git merge qa    # release QA to production
-```
-
-Never commit directly to `qa` or `main`. If QA finds a bug, fix it on `dev` and promote again.
+To release, open a pull request from `dev` into `qa`. The pipeline does the rest.
+See [docs/REGRESSION.md](docs/REGRESSION.md) for the full framework and the one-time GitHub setup.
